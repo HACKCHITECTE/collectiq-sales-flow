@@ -58,24 +58,39 @@
             arrondissement: 'Arrondissement'
         };
 
+        let callHistory = {}; // Objet pour stocker { "Nom Entreprise": "statut" }
+
         let allProspects = [];
 
         // 1. Chargement des données (On commence par Brazzaville pour l'exemple)
-        function loadSalesData() {
-            Papa.parse('data/Brazzaville.csv', {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    // FILTRE CRITIQUE : Uniquement ceux qui ont un téléphone valide
-                    allProspects = results.data.filter(d => 
-                        d[mapping.tel] && 
-                        d[mapping.tel].toString().length > 5
-                    );
-                    renderMissions();
-                }
+        async function loadSalesData() {
+    // 1. On récupère d'abord l'historique sur Vercel
+    try {
+        const response = await fetch('/api/get-logs');
+        if (response.ok) {
+            const logs = await response.json();
+            // On transforme le tableau en dictionnaire pour une recherche instantanée
+            logs.forEach(log => {
+                callHistory[log.prospect_name] = log.status;
             });
         }
+    } catch (e) {
+        console.log("Note: Impossible de charger l'historique (mode déconnecté)");
+    }
+
+    // 2. On charge le CSV
+    Papa.parse('data/Brazzaville.csv', {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            allProspects = results.data.filter(d => 
+                d[mapping.tel] && d[mapping.tel].toString().length > 5
+            );
+            renderMissions();
+        }
+    });
+}
 
         // 2. Rendu des cartes de mission
         function renderMissions() {
@@ -86,42 +101,53 @@
 
             // On affiche les 50 premiers pour la performance mobile
             allProspects.slice(0, 50).forEach((p, index) => {
-                const card = document.createElement('div');
-                card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg active:scale-95 transition-transform";
-                
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="px-2 py-0.5 bg-congo-green/10 text-congo-green text-[9px] font-black rounded uppercase tracking-tighter border border-congo-green/20">
-                            Prêt à l'appel
-                        </span>
-                        <span class="text-slate-600 text-[10px]">#${1000 + index}</span>
-                    </div>
-                    
-                    <h2 class="text-md font-bold text-white mb-1 truncate uppercase">${p[mapping.name]}</h2>
-                    
-                    <div class="flex items-center gap-3 mb-4">
-                        <p class="text-[11px] text-slate-400">
-                            <i class="fa-solid fa-briefcase mr-1 text-slate-600"></i> ${p[mapping.secteur] || 'Secteur Inconnu'}
-                        </p>
-                        <p class="text-[11px] text-slate-400">
-                            <i class="fa-solid fa-location-dot mr-1 text-slate-600"></i> ${p[mapping.arrondissement] || p[mapping.localite] || 'Brazzaville'}
-                        </p>
-                    </div>
+    const name = p[mapping.name];
+    const status = callHistory[name]; // Est-ce qu'on a déjà un statut ?
+    const isDone = !!status;
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <a href="tel:${p[mapping.tel]}" 
-                           onclick="registerCall('${p[mapping.name]}')"
-                           class="flex items-center justify-center gap-2 bg-congo-green hover:bg-green-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-congo-green/20">
+    const card = document.createElement('div');
+    // On ajoute des classes si c'est déjà fait (opacité réduite)
+    card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg transition-all ${isDone ? 'opacity-50 grayscale-[0.3]' : 'active:scale-95'}`;
+    
+    // On ajoute une bordure de couleur si qualifié
+    if(isDone) {
+        const color = status === 'success' ? '#22c55e' : (status === 'refusal' ? '#ef4444' : '#3b82f6');
+        card.style.borderLeft = `4px solid ${color}`;
+    }
+
+    card.innerHTML = `
+        <div class="flex justify-between items-start mb-2">
+            <span class="px-2 py-0.5 ${isDone ? 'bg-slate-700 text-slate-400' : 'bg-congo-green/10 text-congo-green'} text-[9px] font-black rounded uppercase tracking-tighter border border-white/5">
+                ${isDone ? 'Déjà Qualifié' : 'Prêt à l\'appel'}
+            </span>
+            <span class="text-slate-600 text-[10px]">#${1000 + index}</span>
+            </div>
+                    
+            <h2 class="text-md font-bold text-white mb-1 truncate uppercase">${p[mapping.name]}</h2>
+                    
+            <div class="flex items-center gap-3 mb-4">
+                <p class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-briefcase mr-1 text-slate-600"></i> ${p[mapping.secteur] || 'Secteur Inconnu'}
+                </p>
+                <p class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-location-dot mr-1 text-slate-600"></i> ${p[mapping.arrondissement] || p[mapping.localite] || 'Brazzaville'}
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <a href="tel:${p[mapping.tel]}" 
+                    onclick="registerCall('${p[mapping.name]}')"
+                        class="flex items-center justify-center gap-2 bg-congo-green hover:bg-green-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-congo-green/20">
                             <i class="fa-solid fa-phone"></i> APPELER
-                        </a>
-                        <button onclick="openQualifModal('${p[mapping.name].replace(/'/g, "\\'")}', this)" class="flex items-center justify-center gap-2 bg-slate-800 text-slate-300 py-3 rounded-xl font-bold text-sm border border-slate-700">
-                            <i class="fa-solid fa-check"></i> QUALIFIER
-                        </button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+                </a>
+                <button onclick="openQualifModal('${p[mapping.name].replace(/'/g, "\\'")}', this)" class="flex items-center justify-center gap-2 bg-slate-800 text-slate-300 py-3 rounded-xl font-bold text-sm border border-slate-700">
+                    <i class="fa-solid fa-check"></i> QUALIFIER
+                </button>
+            </div>
+        `;
+    container.appendChild(card);
+    });
+    }
 
         function registerCall(name) {
             console.log("Appel lancé vers : " + name);
