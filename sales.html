@@ -187,7 +187,7 @@ async function saveQualification() {
 
     try {
         // Remplacer l'URL par ton point de terminaison API (ex: Vercel ou Supabase Edge)
-        const response = await fetch('https://collectiq-sales-flow-oo69xhn9i-sndzodzouo-1518s-projects.vercel.app/api/save-log', {
+        const response = await fetch('/api/save-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(callData)
