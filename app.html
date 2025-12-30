@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollectIQ Sales Flow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: #0f172a; border-top: 1px solid #1e293b; display: flex; justify-content: space-around; align-items: center; z-index: 50; }
+        .action-btn { background: #228B22; color: white; padding: 10px 20px; border-radius: 12px; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 pb-20">
+
+    <header class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center sticky top-0 z-40">
+        <div>
+            <h1 class="text-xl font-bold text-white">Prospection</h1>
+            <p class="text-xs text-congo-green">Cible : Brazzaville / Commerce</p>
+        </div>
+        <div class="flex gap-3">
+            <button class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="p-4 space-y-4">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+            <div class="flex justify-between items-start mb-3">
+                <span class="px-2 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-bold rounded uppercase">Nouveau</span>
+                <span class="text-slate-500 text-xs italic">Créé il y a 2 jours</span>
+            </div>
+            
+            <h2 class="text-lg font-bold text-white mb-1 uppercase">SOCIETE GENERALE BTP</h2>
+            <p class="text-sm text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1"></i> Centre-ville, Brazzaville</p>
+
+            <div class="grid grid-cols-2 gap-3">
+                <a href="tel:+242060000000" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-congo-green text-white py-3 rounded-xl transition-all border border-slate-700">
+                    <i class="fa-solid fa-phone"></i> Appeler
+                </a>
+                <button onclick="openLogModal()" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-blue-600 text-white py-3 rounded-xl transition-all border border-slate-700">
+                    <i class="fa-solid fa-pen-to-square"></i> Noter
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <nav class="bottom-nav">
+        <button class="flex flex-col items-center text-congo-green text-xs">
+            <i class="fa-solid fa-list-check text-xl mb-1"></i> Missions
+        </button>
+        <button class="flex flex-col items-center text-slate-500 text-xs">
+            <i class="fa-solid fa-map-location-dot text-xl mb-1"></i> Carte
+        </button>
+        <button class="flex flex-col items-center text-slate-500 text-xs">
+            <i class="fa-solid fa-chart-simple text-xl mb-1"></i> Mes Stats
+        </button>
+        <button class="flex flex-col items-center text-slate-500 text-xs">
+            <i class="fa-solid fa-user-gear text-xl mb-1"></i> Profil
+        </button>
+    </nav>
+
+</body>
+</html>
