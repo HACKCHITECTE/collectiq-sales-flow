@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollectIQ Sales Flow - Missions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { slate: { 850: '#1a2332', 900: '#0f172a', 950: '#020617' }, congo: { green: '#228B22' } } } }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-200 pb-24">
+
+    <header class="p-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold text-white">Mes Missions</h1>
+            <p id="missionCount" class="text-xs text-congo-green font-medium uppercase tracking-wider">Chargement des prospects...</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700">
+                <i class="fa-solid fa-filter text-slate-400"></i>
+            </button>
+        </div>
+    </header>
+
+    <main id="missionList" class="p-4 space-y-4">
+        <div class="flex flex-col items-center justify-center py-20 text-slate-600">
+            <i class="fa-solid fa-spinner animate-spin text-3xl mb-4"></i>
+            <p>Initialisation du flux de données...</p>
+        </div>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 h-20 bg-slate-900 border-t border-slate-800 flex justify-around items-center px-6 z-50">
+        <button class="flex flex-col items-center text-congo-green">
+            <i class="fa-solid fa-phone-volume text-xl mb-1"></i>
+            <span class="text-[10px] font-bold">Appels</span>
+        </button>
+        <button class="flex flex-col items-center text-slate-500">
+            <i class="fa-solid fa-location-crosshairs text-xl mb-1"></i>
+            <span class="text-[10px] font-bold">Terrain</span>
+        </button>
+        <button class="flex flex-col items-center text-slate-500">
+            <i class="fa-solid fa-ranking-star text-xl mb-1"></i>
+            <span class="text-[10px] font-bold">Objectifs</span>
+        </button>
+    </nav>
+
+    <script>
+        const mapping = {
+            name: 'Raison_sociale',
+            tel: 'Telephone1',
+            secteur: 'SecteurActivite',
+            localite: 'Localite',
+            arrondissement: 'Arrondissement'
+        };
+
+        let callHistory = {}; // Objet pour stocker { "Nom Entreprise": "statut" }
+
+        let allProspects = [];
+
+        // 1. Chargement des données (On commence par Brazzaville pour l'exemple)
+        async function loadSalesData() {
+    // 1. On récupère d'abord l'historique sur Vercel
+    try {
+        const response = await fetch('/api/get-logs');
+        if (response.ok) {
+            const logs = await response.json();
+            // On transforme le tableau en dictionnaire pour une recherche instantanée
+            logs.forEach(log => {
+                callHistory[log.prospect_name] = log.status;
+            });
+        }
+    } catch (e) {
+        console.log("Note: Impossible de charger l'historique (mode déconnecté)");
+    }
+
+    // 2. On charge le CSV
+    Papa.parse('data/Brazzaville.csv', {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            allProspects = results.data.filter(d => 
+                d[mapping.tel] && d[mapping.tel].toString().length > 5
+            );
+            renderMissions();
+        }
+    });
+}
+
+        // 2. Rendu des cartes de mission
+        function renderMissions() {
+            const container = document.getElementById('missionList');
+            document.getElementById('missionCount').innerText = `${allProspects.length} Opportunités détectées`;
+            
+            container.innerHTML = '';
+
+            // On affiche les 50 premiers pour la performance mobile
+            allProspects.slice(0, 50).forEach((p, index) => {
+    const name = p[mapping.name];
+    const status = callHistory[name]; // Est-ce qu'on a déjà un statut ?
+    const isDone = !!status;
+
+    const card = document.createElement('div');
+    // On ajoute des classes si c'est déjà fait (opacité réduite)
+    card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg transition-all ${isDone ? 'opacity-50 grayscale-[0.3]' : 'active:scale-95'}`;
+    
+    // On ajoute une bordure de couleur si qualifié
+    if(isDone) {
+        const color = status === 'success' ? '#22c55e' : (status === 'refusal' ? '#ef4444' : '#3b82f6');
+        card.style.borderLeft = `4px solid ${color}`;
+    }
+
+    card.innerHTML = `
+        <div class="flex justify-between items-start mb-2">
+            <span class="px-2 py-0.5 ${isDone ? 'bg-slate-700 text-slate-400' : 'bg-congo-green/10 text-congo-green'} text-[9px] font-black rounded uppercase tracking-tighter border border-white/5">
+                ${isDone ? 'Déjà Qualifié' : 'Prêt à l\'appel'}
+            </span>
+            <span class="text-slate-600 text-[10px]">#${1000 + index}</span>
+            </div>
+                    
+            <h2 class="text-md font-bold text-white mb-1 truncate uppercase">${p[mapping.name]}</h2>
+                    
+            <div class="flex items-center gap-3 mb-4">
+                <p class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-briefcase mr-1 text-slate-600"></i> ${p[mapping.secteur] || 'Secteur Inconnu'}
+                </p>
+                <p class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-location-dot mr-1 text-slate-600"></i> ${p[mapping.arrondissement] || p[mapping.localite] || 'Brazzaville'}
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <a href="tel:${p[mapping.tel]}" 
+                    onclick="registerCall('${p[mapping.name]}')"
+                        class="flex items-center justify-center gap-2 bg-congo-green hover:bg-green-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-congo-green/20">
+                            <i class="fa-solid fa-phone"></i> APPELER
+                </a>
+                <button onclick="openQualifModal('${p[mapping.name].replace(/'/g, "\\'")}', this)" class="flex items-center justify-center gap-2 bg-slate-800 text-slate-300 py-3 rounded-xl font-bold text-sm border border-slate-700">
+                    <i class="fa-solid fa-check"></i> QUALIFIER
+                </button>
+            </div>
+        `;
+    container.appendChild(card);
+    });
+    }
+
+        function registerCall(name) {
+            console.log("Appel lancé vers : " + name);
+            // Ici nous ajouterons plus tard la connexion à Supabase pour sauvegarder l'historique
+        }
+
+        function markAsDone(btn) {
+            const card = btn.closest('.bg-slate-900');
+            card.style.opacity = '0.3';
+            card.style.pointerEvents = 'none';
+            btn.innerHTML = '<i class="fa-solid fa-check-double text-congo-green"></i>';
+        }
+
+        window.onload = loadSalesData;
+
+        let currentProspect = null;
+        let currentCard = null;
+
+        function openQualifModal(name, btn) {
+            currentProspect = name;
+            currentCard = btn.closest('.bg-slate-900');
+    
+            document.getElementById('targetName').innerText = name;
+            const modal = document.getElementById('qualifModal');
+            const content = document.getElementById('modalContent');
+    
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+            content.classList.remove('translate-y-full');
+            }, 10);
+        }
+
+function closeQualifModal() {
+    const modal = document.getElementById('qualifModal');
+    const content = document.getElementById('modalContent');
+    
+    content.classList.add('translate-y-full');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function selectStatus(btn, status) {
+    // Désélectionner les autres
+    btn.parentNode.querySelectorAll('button').forEach(b => b.classList.remove('border-congo-green', 'bg-slate-800'));
+    // Sélectionner celui-ci
+    btn.classList.add('border-congo-green', 'bg-slate-800');
+    btn.dataset.status = status;
+}
+
+async function saveQualification() {
+    const note = document.getElementById('qualifNote').value;
+    const selectedBtn = document.querySelector('button[data-status]');
+    const status = selectedBtn ? selectedBtn.dataset.status : 'unknown';
+
+    // Données à envoyer
+    const callData = {
+        prospect_name: currentProspect,
+        status: status,
+        note: note,
+        commercial_id: "comm_001" // ID fixe pour le test
+    };
+
+    try {
+        // Remplacer l'URL par ton point de terminaison API (ex: Vercel ou Supabase Edge)
+        const response = await fetch('/api/save-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(callData)
+        });
+
+        if (response.ok) {
+            console.log("Données sauvegardées sur Neon !");
+            // Feedback visuel
+            showToast("Mission enregistrée avec succès");
+        }
+    } catch (error) {
+        console.error("Erreur de connexion à Neon :", error);
+    }
+
+    // Mise à jour visuelle de la carte
+    if (currentCard) {
+        currentCard.classList.add('border-l-4');
+        currentCard.style.borderColor = status === 'success' ? '#22c55e' : (status === 'refusal' ? '#ef4444' : '#3b82f6');
+        currentCard.style.opacity = '0.5';
+    }
+
+    closeQualifModal();
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = "fixed top-4 left-1/2 -translate-x-1/2 bg-congo-green text-white px-6 py-3 rounded-full shadow-2xl z-[200] font-bold text-sm animate-bounce";
+    toast.innerText = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+    </script>
+
+<div id="qualifModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[100] hidden flex items-end md:items-center justify-center">
+    <div class="bg-slate-900 w-full max-w-md rounded-t-3xl md:rounded-3xl p-6 border-t md:border border-slate-800 shadow-2xl transition-all transform translate-y-full" id="modalContent">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-white">Résultat de l'appel</h3>
+            <button onclick="closeQualifModal()" class="text-slate-500"><i class="fa-solid fa-xmark text-2xl"></i></button>
+        </div>
+
+        <div class="space-y-4">
+            <p id="targetName" class="text-congo-green font-bold uppercase text-sm"></p>
+            
+            <div class="grid grid-cols-1 gap-2">
+                <button onclick="selectStatus(this, 'success')" class="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-850 hover:border-congo-green transition-all group">
+                    <div class="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 group-hover:bg-green-500 group-hover:text-white">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-bold text-white text-sm">Intéressé / RDV pris</p>
+                        <p class="text-[10px] text-slate-500">Le prospect veut une présentation</p>
+                    </div>
+                </button>
+
+                <button onclick="selectStatus(this, 'later')" class="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-850 hover:border-blue-500 transition-all group">
+                    <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-bold text-white text-sm">À rappeler plus tard</p>
+                        <p class="text-[10px] text-slate-500">Occupé ou absent pour le moment</p>
+                    </div>
+                </button>
+
+                <button onclick="selectStatus(this, 'refusal')" class="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-850 hover:border-red-500 transition-all group">
+                    <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 group-hover:bg-red-500 group-hover:text-white">
+                        <i class="fa-solid fa-xmark"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-bold text-white text-sm">Pas intéressé / Refus</p>
+                        <p class="text-[10px] text-slate-500">Ne correspond pas au besoin</p>
+                    </div>
+                </button>
+            </div>
+
+            <textarea id="qualifNote" placeholder="Ajouter un commentaire (facultatif)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-congo-green h-24 text-slate-300"></textarea>
+
+            <button onclick="saveQualification()" class="w-full bg-congo-green text-white py-4 rounded-xl font-bold shadow-lg shadow-congo-green/20">
+                ENREGISTRER LA MISSION
+            </button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
